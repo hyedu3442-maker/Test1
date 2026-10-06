@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>팡팡! 구구단 어드벤처</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+  <style>
+    * {
+      font-family: 'Noto Sans KR', sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .font-game {
+      font-family: 'Jua', cursive, sans-serif;
+    }
+    @keyframes bounce-short {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    @keyframes alert-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    }
+    .animate-shake {
+      animation: shake 0.35s ease-in-out;
+    }
+    .animate-bounce-short {
+      animation: bounce-short 1.2s infinite ease-in-out;
+    }
+    .timer-danger {
+      animation: alert-pulse 0.8s infinite;
+    }
+    .btn-3d {
+      transition: all 0.1s ease;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2);
+    }
+    .btn-3d:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+    }
+    /* Confetti Canvas overlay */
+    #confettiCanvas {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-amber-100 via-orange-50 to-pink-100 min-h-screen text-slate-800 flex flex-col items-center justify-between p-2 sm:p-4 overflow-x-hidden">
+
+  <canvas id="confettiCanvas"></canvas>
+
+  <!-- 상단 네비게이션 헤더 -->
+  <header class="w-full max-w-md mx-auto flex items-center justify-between py-2 px-3 bg-white/80 backdrop-blur-md rounded-2xl shadow-sm border border-amber-200 mb-2">
+    <div class="flex items-center space-x-2">
+      <span class="text-2xl animate-bounce-short">⭐</span>
+      <div>
+        <h1 class="text-lg font-game text-amber-600 tracking-wide leading-none">팡팡! 구구단</h1>
+        <p class="text-[10px] text-slate-500 font-semibold">어드벤처</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-2">
+      <!-- 사운드 토글 버튼 -->
+      <button id="soundToggleBtn" class="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 transition" title="소리 켜기/끄기">
+        <span id="soundIcon" class="text-xl">🔊</span>
+      </button>
+      <!-- 메인 메뉴 복귀 버튼 -->
+      <button id="homeBtn" class="hidden p-2 rounded-xl bg-orange-100 hover:bg-orange-200 text-orange-700 font-game text-sm transition flex items-center gap-1">
+        <span>🏠</span> 메뉴
+      </button>
+    </div>
+  </header>
+
+  <main id="appContainer" class="w-full max-w-md mx-auto flex-1 flex flex-col justify-center items-center relative">
+    
+    <!-- 1. 메인 메뉴 화면 (LOBBY) -->
+    <section id="lobbyScreen" class="w-full flex flex-col items-center gap-4 py-2">
+      <div class="text-center relative my-2">
+        <div class="inline-block p-4 bg-white rounded-3xl shadow-lg border-4 border-amber-300 transform -rotate-1 hover:rotate-0 transition">
+          <div class="text-5xl mb-1">🎮✨</div>
+          <h2 class="text-3xl font-game text-amber-600 drop-shadow-sm">구구단 팡팡!</h2>
+          <p class="text-xs text-slate-500 font-bold mt-1">신나게 놀면서 마스터하는 곱셈 마법</p>
+        </div>
+      </div>
+
+      <!-- 모드 선택 카드 목록 -->
+      <div class="w-full grid grid-cols-1 gap-3 px-1">
+        <!-- 스테이지 모드 -->
+        <button onclick="Game.openStageSelect()" class="btn-3d w-full p-4 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-400 text-white font-game text-left flex items-center justify-between border-b-4 border-amber-600">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl bg-white/20 p-2 rounded-xl">🗺️</span>
+            <div>
+              <div class="text-xl">단별 탐험 모드 (하트 3개 & 10문제)</div>
+              <div class="text-xs opacity-90 font-normal">문제당 6초! 기회 3번 안에 10문제 완주하기</div>
+            </div>
+          </div>
+          <span class="text-xl font-bold bg-white/30 px-3 py-1 rounded-full">도전</span>
+        </button>
+
+        <!-- 타임어택 모드 -->
+        <button onclick="Game.startMode('timeAttack')" class="btn-3d w-full p-4 rounded-2xl bg-gradient-to-r from-rose-400 to-pink-500 text-white font-game text-left flex items-center justify-between border-b-4 border-rose-700">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl bg-white/20 p-2 rounded-xl">⚡</span>
+            <div>
+              <div class="text-xl">스피드 60초 어택 (총 30문제 챌린지)</div>
+              <div class="text-xs opacity-90 font-normal">시간 내 최대 30문제에 도전하고 최고 점수 기록!</div>
+            </div>
+          </div>
+          <span class="text-xl font-bold bg-white/30 px-3 py-1 rounded-full">GO</span>
+        </button>
+
+        <!-- 서바이벌 모드 -->
+        <button onclick="Game.startMode('survival')" class="btn-3d w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 text-white font-game text-left flex items-center justify-between border-b-4 border-emerald-700">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl bg-white/20 p-2 rounded-xl">❤️</span>
+            <div>
+              <div class="text-xl">익스트림 서바이벌 (초고속 4초)</div>
+              <div class="text-xs opacity-90 font-normal">문제당 4초 초긴박 스피드! 하트 3개로 한계 도전</div>
+            </div>
+          </div>
+          <span class="text-xl font-bold bg-white/30 px-3 py-1 rounded-full">생존</span>
+        </button>
+
+        <!-- 구구단 학습표 -->
+        <button onclick="Game.openChart()" class="btn-3d w-full p-3.5 rounded-2xl bg-gradient-to-r from-sky-400 to-indigo-500 text-white font-game text-left flex items-center justify-between border-b-4 border-sky-700">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl bg-white/20 p-2 rounded-xl">📖</span>
+            <div>
+              <div class="text-lg">구구단 비밀 수첩</div>
+              <div class="text-xs opacity-90 font-normal">2단부터 9단까지 한눈에 훑어보기</div>
+            </div>
+          </div>
+          <span class="text-sm font-bold bg-white/30 px-3 py-1 rounded-full">보기</span>
+        </button>
+      </div>
+
+      <!-- 내 최고 기록 요약 -->
+      <div class="w-full bg-white/70 backdrop-blur rounded-2xl p-3 border border-amber-200 mt-1 flex justify-around text-center text-xs">
+        <div>
+          <span class="text-slate-400 block font-semibold">최고 콤보</span>
+          <span id="bestComboText" class="text-base font-game text-amber-600">0 COMBO</span>
+        </div>
+        <div class="w-px bg-slate-200"></div>
+        <div>
+          <span class="text-slate-400 block font-semibold">스피드 최고점</span>
+          <span id="bestScoreText" class="text-base font-game text-rose-500">0 점</span>
+        </div>
+        <div class="w-px bg-slate-200"></div>
+        <div>
+          <span class="text-slate-400 block font-semibold">정복한 단</span>
+          <span id="clearedStagesText" class="text-base font-game text-teal-600">0 / 8 단</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 단 선택 화면 (STAGE SELECT) -->
+    <section id="stageSelectScreen" class="w-full hidden flex-col items-center gap-3 py-2">
+      <div class="text-center">
+        <h3 class="text-2xl font-game text-amber-700">단계를 선택하세요</h3>
+        <p class="text-xs text-slate-500">원하는 구구단을 골라 별 3개 마스터에 도전하세요!</p>
+      </div>
+
+      <!-- 2단 ~ 9단 및 마스터(종합) 버튼 그리드 -->
+      <div class="w-full grid grid-cols-4 gap-3 my-2" id="stageGrid">
+        <!-- JS로 동적 생성 -->
+      </div>
+
+      <div class="w-full">
+        <button onclick="Game.startStage('all')" class="btn-3d w-full p-3 rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-game text-base border-b-4 border-purple-800 flex items-center justify-center gap-2">
+          <span>👑</span> <span>전체 랜덤 보스전 (2~9단 통합)</span>
+        </button>
+      </div>
+
+      <button onclick="Game.showScreen('lobbyScreen')" class="mt-2 text-sm text-slate-500 hover:text-slate-800 font-game underline">
+        ← 메인 메뉴로 돌아가기
+      </button>
+    </section>
+
+    <!-- 3. 실제 게임 진행 화면 (IN-GAME PLAY) -->
+    <section id="gamePlayScreen" class="w-full hidden flex-col items-center gap-2 py-1">
+      
+      <!-- 상단 상태 바 (모드 정보, 하트, 남은 문제, 점수) -->
+      <div class="w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span id="gameModeBadge" class="bg-amber-100 text-amber-800 font-game text-xs px-2.5 py-1 rounded-full">스테이지</span>
+          <div id="livesContainer" class="flex gap-0.5 text-base">
+            <span>❤️</span><span>❤️</span><span>❤️</span>
+          </div>
+        </div>
+
+        <!-- 남은 문제 수 배지 -->
+        <div class="flex items-center gap-2">
+          <div id="questionLimitBadge" class="font-game text-xs bg-slate-100 px-2 py-1 rounded-lg text-slate-600">
+            남은 문제: <span id="remainingQuestionsText" class="text-amber-600 font-bold">10</span>
+          </div>
+        </div>
+
+        <!-- 점수 -->
+        <div class="text-right">
+          <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">SCORE</div>
+          <div id="scoreText" class="font-game text-xl text-slate-800">0</div>
+        </div>
+      </div>
+
+      <!-- 대형 시간 제한 막대 (타이머 프로그레스 바) -->
+      <div class="w-full bg-white/90 backdrop-blur rounded-2xl p-2.5 border border-amber-200 shadow-sm flex flex-col gap-1.5">
+        <div class="flex items-center justify-between px-1">
+          <div class="flex items-center gap-1.5 font-game text-xs text-slate-600">
+            <span class="text-base animate-pulse">⏱️</span>
+            <span id="timerBarLabel" class="font-bold">남은 시간</span>
+          </div>
+          <span id="timerTextLarge" class="font-game text-sm text-rose-500 font-bold tracking-wider">6.0초</span>
+        </div>
+        
+        <!-- 실시간 막대 바 트랙 -->
+        <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden p-0.5 border border-slate-300 relative shadow-inner">
+          <div id="questionTimeBar" class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 rounded-full transition-all duration-75 w-full shadow-sm"></div>
+        </div>
+      </div>
+
+      <!-- 콤보 및 피버 인디케이터 -->
+      <div class="h-6 flex items-center justify-center">
+        <div id="comboIndicator" class="opacity-0 transition duration-200 transform scale-90 font-game text-sm text-pink-600 bg-pink-100 px-3 py-0.5 rounded-full border border-pink-300">
+          🔥 <span id="comboCount">0</span> 콤보!
+        </div>
+      </div>
+
+      <!-- 문제 카드 (Quiz Card) -->
+      <div id="questionCard" class="w-full bg-white rounded-3xl shadow-md border-4 border-amber-200 p-6 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-150">
+        <!-- 콤보 피버 배경 이펙트용 바 -->
+        <div id="feverProgress" class="absolute bottom-0 left-0 h-1.5 bg-gradient-to-r from-amber-400 to-rose-500 w-0 transition-all duration-300"></div>
+
+        <div class="text-xs text-amber-600 font-bold mb-1 flex items-center gap-1.5" id="questionSubtext">
+          <span>문제 1 / 10</span>
+        </div>
+        
+        <!-- 수식 표시 -->
+        <div class="flex items-center justify-center gap-3 my-2 font-game text-5xl sm:text-6xl text-slate-800 tracking-wider">
+          <span id="numA" class="text-amber-500">7</span>
+          <span class="text-slate-400 text-3xl">×</span>
+          <span id="numB" class="text-indigo-500">8</span>
+          <span class="text-slate-400 text-3xl">=</span>
+          <span id="userAnswerDisplay" class="text-amber-600 border-b-4 border-dashed border-amber-400 min-w-[70px] text-center">?</span>
+        </div>
+
+        <!-- 오답 시 친절한 정답 안내 팝업 바 -->
+        <div id="answerRevealBanner" class="hidden w-full mt-2 py-1.5 px-3 bg-rose-50 border border-rose-300 rounded-xl text-center font-game text-rose-600 text-sm animate-bounce-short">
+          정답은 <span id="revealedCorrectNumber" class="text-lg font-bold text-rose-700 underline">56</span> 입니다!
+        </div>
+
+        <!-- 피드백 말풍선/이모지 -->
+        <div id="feedbackBadge" class="absolute top-2 right-3 text-xl opacity-0 transform translate-y-1 transition duration-200">
+          ✨
+        </div>
+      </div>
+
+      <!-- 입력 컨트롤러 전환 바 (객관식 4지선다 vs 키패드) -->
+      <div class="w-full flex items-center justify-between px-2 pt-1 text-xs">
+        <span class="text-slate-400 font-bold">입력 방식</span>
+        <div class="bg-slate-200 p-0.5 rounded-xl flex gap-1 font-game">
+          <button id="inputModeChoiceBtn" onclick="Game.setInputMode('choice')" class="px-2.5 py-1 rounded-lg bg-white shadow-xs text-slate-800 transition">선택형 (4지선다)</button>
+          <button id="inputModeKeypadBtn" onclick="Game.setInputMode('keypad')" class="px-2.5 py-1 rounded-lg text-slate-500 transition">키패드 직접입력</button>
+        </div>
+      </div>
+
+      <!-- 4지선다 보기 영역 -->
+      <div id="choiceContainer" class="w-full grid grid-cols-2 gap-2.5 my-2">
+        <button onclick="Game.submitChoice(0)" class="choice-btn btn-3d bg-white hover:bg-amber-50 text-slate-800 font-game text-2xl py-4 rounded-2xl border-2 border-amber-200">0</button>
+        <button onclick="Game.submitChoice(1)" class="choice-btn btn-3d bg-white hover:bg-amber-50 text-slate-800 font-game text-2xl py-4 rounded-2xl border-2 border-amber-200">0</button>
+        <button onclick="Game.submitChoice(2)" class="choice-btn btn-3d bg-white hover:bg-amber-50 text-slate-800 font-game text-2xl py-4 rounded-2xl border-2 border-amber-200">0</button>
+        <button onclick="Game.submitChoice(3)" class="choice-btn btn-3d bg-white hover:bg-amber-50 text-slate-800 font-game text-2xl py-4 rounded-2xl border-2 border-amber-200">0</button>
+      </div>
+
+      <!-- 숫자 키패드 영역 (직접 입력 모드) -->
+      <div id="keypadContainer" class="w-full hidden grid-cols-3 gap-2 my-2">
+        <button onclick="Game.pressKey(1)" class="btn-3d bg-white text-slate-700 font-game text-2xl py-3 rounded-xl border border-slate-200">1</button>
+        <button onclick="Game.pressKey(2)" class="btn-3d bg-white text-slate-700 font-game text-2xl py-3 rounded-xl border border-slate-200">2</button>
+        <button onclick="Game.pressKey(3)" class="btn-3d bg-white text-slate-700 font-game text-2xl py-3 rounded-xl border border-slate-200">3</button>
+        <button onclick="Game.pressKey(4)" class="btn-3d bg-white text-slate-700 font-game text-2xl py-3 rounded-xl border border-slate-200">4</button>
+        <button onclick="Game.pressKey(5)" class="btn-3d bg-white text-slate-700 font-game text-2xl py-3 rounded-xl border border-slate-200">5</button>
+        <button onclick="Game.pressKey(6)" class="btn-3d bg-white text-slate-700 font-game text-2xl py-3 rounded-xl border border-slate-200">6</button>
+        <button onclick="Game.pressKey(7)" class="btn-3d bg-white text-slate-700 font-game text-2xl py-3 rounded-xl border border-slate-200">7</button>
+        <button onclick="Game.pressKey(8)" class="btn-3d bg-white text-slate-700 font-game text-2xl py-3 rounded-xl border border-slate-200">8</button>
+        <button onclick="Game.pressKey(9)" class="btn-3d bg-white text-slate-700 font-game text-2xl py-3 rounded-xl border border-slate-200">9</button>
+        <button onclick="Game.pressKey('clear')" class="btn-3d bg-rose-50 text-rose-600 font-game text-lg py-3 rounded-xl border border-rose-200">지움</button>
+        <button onclick="Game.pressKey(0)" class="btn-3d bg-white text-slate-700 font-game text-2xl py-3 rounded-xl border border-slate-200">0</button>
+        <button onclick="Game.pressKey('enter')" class="btn-3d bg-amber-500 text-white font-game text-lg py-3 rounded-xl border-b-4 border-amber-700">확인</button>
+      </div>
+
+    </section>
+
+    <!-- 4. 결과 발표 모달 화면 (RESULT OVERLAY) -->
+    <div id="resultModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+      <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border-4 border-amber-300 text-center transform scale-95 transition-all duration-200" id="modalCard">
+        <div id="resultTrophy" class="text-6xl mb-2 animate-bounce-short">🏆</div>
+        <h3 id="resultTitle" class="text-2xl font-game text-slate-800">미션 완료!</h3>
+        <p id="resultSubtitle" class="text-xs text-slate-500 mb-4">대단해요! 구구단 실력이 쑥쑥 자랐어요!</p>
+
+        <!-- 별점 표시 (스테이지 모드 전용) -->
+        <div id="starsRow" class="flex justify-center gap-2 text-3xl mb-4">
+          <span id="star1">⭐</span>
+          <span id="star2">⭐</span>
+          <span id="star3">⭐</span>
+        </div>
+
+        <!-- 점수 상세 표 -->
+        <div class="bg-amber-50 rounded-2xl p-3 border border-amber-100 text-sm space-y-1.5 mb-5 font-semibold text-slate-600">
+          <div class="flex justify-between">
+            <span>획득 점수</span>
+            <span id="modalScore" class="font-game text-amber-600 text-base">0점</span>
+          </div>
+          <div class="flex justify-between">
+            <span>맞힌 문제</span>
+            <span id="modalCorrect" class="text-slate-800">0 / 0</span>
+          </div>
+          <div class="flex justify-between">
+            <span>최대 콤보</span>
+            <span id="modalMaxCombo" class="text-pink-600 font-game">0 COMBO</span>
+          </div>
+          <div class="flex justify-between">
+            <span>정답률</span>
+            <span id="modalAccuracy" class="text-emerald-600">100%</span>
+          </div>
+        </div>
+
+        <!-- 액션 버튼들 -->
+        <div class="flex gap-2">
+          <button onclick="Game.retryCurrentMode()" class="btn-3d flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white font-game rounded-xl border-b-4 border-amber-700">다시 하기</button>
+          <button onclick="Game.showScreen('lobbyScreen'); Game.closeResultModal();" class="btn-3d flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-game rounded-xl">메인으로</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. 구구단 비밀수첩 (학습용 표 뷰어) -->
+    <section id="chartScreen" class="w-full hidden flex-col items-center gap-3 py-1">
+      <div class="w-full flex items-center justify-between">
+        <h3 class="text-xl font-game text-indigo-700">📖 구구단 비밀수첩</h3>
+        <button onclick="Game.showScreen('lobbyScreen')" class="text-xs bg-slate-200 px-3 py-1.5 rounded-lg font-game">닫기</button>
+      </div>
+
+      <!-- 단 선택 탭 (2단 ~ 9단) -->
+      <div class="w-full flex gap-1 overflow-x-auto pb-1" id="chartTabs">
+        <!-- JS로 2단 ~ 9단 탭 생성 -->
+      </div>
+
+      <!-- 해당 단의 곱셈 리스트 -->
+      <div id="chartContent" class="w-full bg-white rounded-2xl p-4 shadow-sm border border-indigo-100 flex flex-col gap-2 max-h-[55vh] overflow-y-auto">
+        <!-- JS로 행 생성 -->
+      </div>
+
+      <p class="text-[11px] text-slate-400 text-center">원하는 단을 클릭하여 소리 내어 읽어보세요!</p>
+    </section>
+
+  </main>
+
+  <!-- 하단 푸터 -->
+  <footer class="w-full max-w-md mx-auto text-center py-2 text-[11px] text-slate-400">
+    팡팡! 구구단 어드벤처 &bull; 언제 어디서나 신나는 두뇌 플레이
+  </footer>
+
+  <script>
+    /* 사운드 관리자: Web Audio API 기반 순수 신디사이저 (외부 오디오 파일 없이 즉시 작동) */
+    const SoundEngine = {
+      ctx: null,
+      enabled: true,
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      },
+
+      toggle() {
+        this.enabled = !this.enabled;
+        const icon = document.getElementById('soundIcon');
+        icon.textContent = this.enabled ? '🔊' : '🔇';
+        return this.enabled;
+      },
+
+      /* 정답 실로폰 멜로디 */
+      playCorrect(combo = 1) {
+        if (!this.enabled) return;
+        this.init();
+        const baseFreq = 523.25; // C5
+        const step = Math.min(combo - 1, 8);
+        const freq1 = baseFreq * Math.pow(2, step / 12);
+        const freq2 = freq1 * 1.25; // 장3도 위
+
+        this.beep(freq1, 0.12, 'triangle', 0.18);
+        setTimeout(() => this.beep(freq2, 0.18, 'triangle', 0.2), 70);
+      },
+
+      /* 오답 둔탁한 소리 */
+      playWrong() {
+        if (!this.enabled) return;
+        this.init();
+        this.beep(160, 0.22, 'sawtooth', 0.2);
+        setTimeout(() => this.beep(120, 0.25, 'sawtooth', 0.2), 100);
+      },
+
+      /* 버튼 탭 클릭 사운드 */
+      playTap() {
+        if (!this.enabled) return;
+        this.init();
+        this.beep(420, 0.04, 'sine', 0.1);
+      },
+
+      /* 긴박한 시계 초침 째깍 소리 */
+      playTick() {
+        if (!this.enabled) return;
+        this.init();
+        this.beep(950, 0.03, 'square', 0.06);
+      },
+
+      /* 팡파레 축하음 */
+      playFanfare() {
+        if (!this.enabled) return;
+        this.init();
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          setTimeout(() => {
+            this.beep(freq, 0.25, 'triangle', 0.25);
+          }, idx * 110);
+        });
+      },
+
+      /* 단일 톤 합성 헬퍼 */
+      beep(freq, duration, type = 'sine', volume = 0.2) {
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          
+          gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {
+          // Audio context safe fallback
+        }
+      }
+    };
+
+    /* 가벼운 캔버스 폭죽(컨페티) 이펙터 */
+    const Confetti = {
+      canvas: document.getElementById('confettiCanvas'),
+      ctx: null,
+      particles: [],
+      animationId: null,
+
+      init() {
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+      },
+
+      resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+      },
+
+      fire(x = window.innerWidth / 2, y = window.innerHeight / 2, count = 40) {
+        const colors = ['#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444'];
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = Math.random() * 8 + 3;
+          this.particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 3,
+            size: Math.random() * 6 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rotation: Math.random() * 360,
+            rotSpeed: (Math.random() - 0.5) * 12,
+            opacity: 1,
+            gravity: 0.25,
+            drag: 0.96
+          });
+        }
+        if (!this.animationId) {
+          this.loop();
+        }
+      },
+
+      loop() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += p.gravity;
+          p.vx *= p.drag;
+          p.rotation += p.rotSpeed;
+          p.opacity -= 0.015;
+
+          if (p.opacity <= 0 || p.y > this.canvas.height + 50) {
+            this.particles.splice(i, 1);
+            continue;
+          }
+
+          this.ctx.save();
+          this.ctx.translate(p.x, p.y);
+          this.ctx.rotate((p.rotation * Math.PI) / 180);
+          this.ctx.globalAlpha = Math.max(0, p.opacity);
+          this.ctx.fillStyle = p.color;
+          this.ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+          this.ctx.restore();
+        }
+
+        if (this.particles.length > 0) {
+          this.animationId = requestAnimationFrame(() => this.loop());
+        } else {
+          this.animationId = null;
+        }
+      }
+    };
+
+    /* 게임 핵심 로직 컨트롤러 */
+    const Game = {
+      mode: 'stage', // 'stage', 'timeAttack', 'survival'
+      stageNum: 2, // 2 ~ 9 or 'all'
+      inputMode: 'choice', // 'choice' or 'keypad'
+      
+      score: 0,
+      combo: 0,
+      maxCombo: 0,
+      currentQuestionIndex: 0,
+      totalQuestions: 10,
+      correctCount: 0,
+      wrongCount: 0,
+      lives: 3,
+      maxLives: 3,
+      
+      // 시간 제한 및 게이지 컨트롤
+      perQuestionDuration: 6, // 문제당 제한시간(초)
+      perQuestionTimeLeft: 6,
+      questionTimerInterval: null,
+      globalTimeLeft: 60,
+      globalTimerInterval: null,
+      isInputLocked: false, // 채점 및 정답 공개 딜레이 중 중복 클릭 방지
+      
+      currentA: 2,
+      currentB: 1,
+      currentAnswer: 2,
+      currentInputString: '',
+      choiceOptions: [],
+
+      // 로컬 스토리지 데이터
+      userData: {
+        stageStars: {}, // { "2": 3, "3": 2, ... }
+        bestScoreTimeAttack: 0,
+        bestCombo: 0
+      },
+
+      init() {
+        Confetti.init();
+        this.loadStorage();
+        this.renderStageGrid();
+        this.renderChartTabs();
+        this.updateLobbyStats();
+        this.bindEvents();
+      },
+
+      bindEvents() {
+        // 사운드 토글
+        document.getElementById('soundToggleBtn').addEventListener('click', () => {
+          SoundEngine.toggle();
+        });
+
+        // 홈 버튼
+        document.getElementById('homeBtn').addEventListener('click', () => {
+          this.endGameTimer();
+          this.showScreen('lobbyScreen');
+        });
+
+        // 물리 키보드 리스너 (0-9, Backspace, Enter 지원)
+        window.addEventListener('keydown', (e) => {
+          // 게임 화면일 때만 반응
+          const playScreen = document.getElementById('gamePlayScreen');
+          if (playScreen.classList.contains('hidden')) return;
+
+          if (e.key >= '0' && e.key <= '9') {
+            if (this.inputMode === 'choice') {
+              // 1~4 키로 보기 선택 편의 기능
+              const num = parseInt(e.key);
+              if (num >= 1 && num <= 4) {
+                this.submitChoice(num - 1);
+              }
+            } else {
+              this.pressKey(parseInt(e.key));
+            }
+          } else if (e.key === 'Backspace') {
+            this.pressKey('clear');
+          } else if (e.key === 'Enter') {
+            this.pressKey('enter');
+          }
+        });
+      },
+
+      loadStorage() {
+        try {
+          const raw = localStorage.getItem('GUGUDAN_ADVENTURE_SAVE');
+          if (raw) {
+            this.userData = Object.assign(this.userData, JSON.parse(raw));
+          }
+        } catch (e) {
+          console.warn('Storage read error:', e);
+        }
+      },
+
+      saveStorage() {
+        try {
+          localStorage.setItem('GUGUDAN_ADVENTURE_SAVE', JSON.stringify(this.userData));
+        } catch (e) {
+          console.warn('Storage save error:', e);
+        }
+      },
+
+      updateLobbyStats() {
+        document.getElementById('bestComboText').textContent = `${this.userData.bestCombo || 0} COMBO`;
+        document.getElementById('bestScoreText').textContent = `${(this.userData.bestScoreTimeAttack || 0).toLocaleString()} 점`;
+        
+        let clearedCount = 0;
+        for (let i = 2; i <= 9; i++) {
+          if (this.userData.stageStars && this.userData.stageStars[i] > 0) {
+            clearedCount++;
+          }
+        }
+        document.getElementById('clearedStagesText').textContent = `${clearedCount} / 8 단`;
+      },
+
+      showScreen(screenId) {
+        const screens = ['lobbyScreen', 'stageSelectScreen', 'gamePlayScreen', 'chartScreen'];
+        screens.forEach(id => {
+          const el = document.getElementById(id);
+          if (id === screenId) {
+            el.classList.remove('hidden');
+            el.classList.add('flex');
+          } else {
+            el.classList.add('hidden');
+            el.classList.remove('flex');
+          }
+        });
+
+        const homeBtn = document.getElementById('homeBtn');
+        if (screenId === 'lobbyScreen') {
+          homeBtn.classList.add('hidden');
+          this.updateLobbyStats();
+        } else {
+          homeBtn.classList.remove('hidden');
+        }
+      },
+
+      renderStageGrid() {
+        const grid = document.getElementById('stageGrid');
+        grid.innerHTML = '';
+
+        for (let dan = 2; dan <= 9; dan++) {
+          const stars = (this.userData.stageStars && this.userData.stageStars[dan]) || 0;
+          let starHtml = '☆☆☆';
+          if (stars === 1) starHtml = '★☆☆';
+          if (stars === 2) starHtml = '★★☆';
+          if (stars === 3) starHtml = '★★★';
+
+          const btn = document.createElement('button');
+          btn.className = 'btn-3d flex flex-col items-center justify-center p-3 rounded-2xl bg-white hover:bg-amber-50 border-2 border-amber-300 shadow-sm transition';
+          btn.onclick = () => this.startStage(dan);
+          btn.innerHTML = `
+            <span class="text-2xl font-game text-amber-600">${dan}단</span>
+            <span class="text-xs text-amber-500 font-bold mt-1 tracking-tight">${starHtml}</span>
+          `;
+          grid.appendChild(btn);
+        }
+      },
+
+      openStageSelect() {
+        SoundEngine.playTap();
+        this.renderStageGrid();
+        this.showScreen('stageSelectScreen');
+      },
+
+      startStage(dan) {
+        SoundEngine.playTap();
+        this.mode = 'stage';
+        this.stageNum = dan;
+        this.totalQuestions = 10;
+        this.lives = 3;
+        this.perQuestionDuration = 6; // 문제당 6초의 긴박함
+        this.initGameSession();
+      },
+
+      startMode(mode) {
+        SoundEngine.playTap();
+        this.mode = mode;
+        if (mode === 'timeAttack') {
+          this.globalTimeLeft = 60;
+          this.totalQuestions = 30; // 60초 내 최대 30문제 횟수 제한
+          this.lives = 999; // 타임어택은 시간 내 무제한 기회
+          this.perQuestionDuration = 5;
+        } else if (mode === 'survival') {
+          this.lives = 3;
+          this.totalQuestions = 50; // 서바이벌 한계 돌파 50문제
+          this.perQuestionDuration = 4; // 4초 초긴박 서든데스
+        }
+        this.initGameSession();
+      },
+
+      retryCurrentMode() {
+        this.closeResultModal();
+        if (this.mode === 'stage') {
+          this.startStage(this.stageNum);
+        } else {
+          this.startMode(this.mode);
+        }
+      },
+
+      initGameSession() {
+        this.stopAllTimers();
+        this.score = 0;
+        this.combo = 0;
+        this.maxCombo = 0;
+        this.currentQuestionIndex = 0;
+        this.correctCount = 0;
+        this.wrongCount = 0;
+        this.currentInputString = '';
+        this.isInputLocked = false;
+
+        const badge = document.getElementById('gameModeBadge');
+        const livesBox = document.getElementById('livesContainer');
+        const questionLimitBadge = document.getElementById('questionLimitBadge');
+        const timerLabel = document.getElementById('timerBarLabel');
+
+        // 모드별 상태창 셋업
+        if (this.mode === 'stage') {
+          const danName = this.stageNum === 'all' ? '보스전 (전체)' : `${this.stageNum}단`;
+          badge.textContent = `단별탐험: ${danName}`;
+          livesBox.classList.remove('hidden');
+          questionLimitBadge.classList.remove('hidden');
+          timerLabel.textContent = '문제당 제한 시간';
+        } else if (this.mode === 'timeAttack') {
+          badge.textContent = '스피드 어택';
+          livesBox.classList.add('hidden');
+          questionLimitBadge.classList.remove('hidden');
+          timerLabel.textContent = '전체 남은 시간 (60초)';
+          this.startGlobalTimer();
+        } else if (this.mode === 'survival') {
+          badge.textContent = '익스트림 서바이벌';
+          livesBox.classList.remove('hidden');
+          questionLimitBadge.classList.remove('hidden');
+          timerLabel.textContent = '초고속 생존 타이머';
+        }
+
+        this.updateLivesUI();
+        this.updateScoreUI();
+        this.updateComboUI();
+        this.setInputMode(this.inputMode);
+        this.showScreen('gamePlayScreen');
+        this.nextQuestion();
+      },
+
+      startGlobalTimer() {
+        if (this.globalTimerInterval) clearInterval(this.globalTimerInterval);
+        const totalDuration = 60;
+        this.globalTimerInterval = setInterval(() => {
+          this.globalTimeLeft--;
+          const timerLabel = document.getElementById('timerTextLarge');
+          if (timerLabel) {
+            timerLabel.textContent = `${this.globalTimeLeft}초`;
+          }
+
+          // 타임어택 모드에서는 메인 막대가 전체 60초를 실시간 반영
+          if (this.mode === 'timeAttack') {
+            const ratio = Math.max(0, (this.globalTimeLeft / totalDuration) * 100);
+            this.updateQuestionTimeBar(ratio);
+          }
+
+          if (this.globalTimeLeft <= 5) {
+            SoundEngine.playTick();
+          }
+          if (this.globalTimeLeft <= 0) {
+            this.stopAllTimers();
+            this.finishGame();
+          }
+        }, 1000);
+      },
+
+      /* 각 문제마다 주어지는 제한 시간 카운트다운 게이지 */
+      startQuestionTimer() {
+        if (this.questionTimerInterval) clearInterval(this.questionTimerInterval);
+        this.perQuestionTimeLeft = this.perQuestionDuration;
+        this.updateQuestionTimeBar(100);
+
+        const card = document.getElementById('questionCard');
+        card.classList.remove('timer-danger');
+
+        const stepMs = 50; // 더욱 부드러운 50ms 인터벌
+        const totalSteps = (this.perQuestionDuration * 1000) / stepMs;
+        let currentStep = 0;
+
+        const timeTextLarge = document.getElementById('timerTextLarge');
+        if (this.mode !== 'timeAttack') {
+          timeTextLarge.textContent = `${this.perQuestionDuration.toFixed(1)}초`;
+        }
+
+        this.questionTimerInterval = setInterval(() => {
+          if (this.isInputLocked) return;
+
+          currentStep++;
+          const remainingRatio = Math.max(0, 100 - (currentStep / totalSteps) * 100);
+          const timeLeftSec = Math.max(0, this.perQuestionDuration - (currentStep * stepMs) / 1000);
+          
+          if (this.mode !== 'timeAttack') {
+            this.updateQuestionTimeBar(remainingRatio);
+            timeTextLarge.textContent = `${timeLeftSec.toFixed(1)}초`;
+          }
+
+          if (timeLeftSec <= 2.0 && timeLeftSec > 0 && currentStep % 10 === 0) {
+            SoundEngine.playTick();
+            card.classList.add('timer-danger');
+          }
+
+          if (currentStep >= totalSteps) {
+            clearInterval(this.questionTimerInterval);
+            this.handleTimeout();
+          }
+        }, stepMs);
+      },
+
+      updateQuestionTimeBar(percent) {
+        const bar = document.getElementById('questionTimeBar');
+        if (!bar) return;
+        bar.style.width = `${percent}%`;
+        if (percent < 25) {
+          bar.className = 'h-full bg-rose-500 rounded-full transition-all duration-75';
+        } else if (percent < 55) {
+          bar.className = 'h-full bg-amber-400 rounded-full transition-all duration-75';
+        } else {
+          bar.className = 'h-full bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 rounded-full transition-all duration-75';
+        }
+      },
+
+      stopAllTimers() {
+        if (this.questionTimerInterval) {
+          clearInterval(this.questionTimerInterval);
+          this.questionTimerInterval = null;
+        }
+        if (this.globalTimerInterval) {
+          clearInterval(this.globalTimerInterval);
+          this.globalTimerInterval = null;
+        }
+        const card = document.getElementById('questionCard');
+        if (card) card.classList.remove('timer-danger');
+      },
+
+      /* 시간 초과 시 오답 처리 및 정답 알려주기 */
+      handleTimeout() {
+        if (this.isInputLocked) return;
+        this.checkAnswer(null, null, true);
+      },
+
+      updateLivesUI() {
+        const box = document.getElementById('livesContainer');
+        if (this.mode === 'timeAttack') return;
+        let html = '';
+        for (let i = 0; i < 3; i++) {
+          html += i < this.lives ? '<span>❤️</span>' : '<span class="opacity-30">🤍</span>';
+        }
+        box.innerHTML = html;
+      },
+
+      nextQuestion() {
+        // 남은 횟수 체크
+        if (this.currentQuestionIndex >= this.totalQuestions) {
+          this.finishGame();
+          return;
+        }
+
+        this.isInputLocked = false;
+        this.currentQuestionIndex++;
+        this.currentInputString = '';
+        this.updateAnswerDisplay();
+
+        // 정답 배너 숨기기
+        const banner = document.getElementById('answerRevealBanner');
+        banner.classList.add('hidden');
+
+        // 남은 문제 수 UI 갱신
+        const remaining = Math.max(0, this.totalQuestions - this.currentQuestionIndex + 1);
+        document.getElementById('remainingQuestionsText').textContent = remaining;
+
+        // 구구단 피연산자 결정
+        if (this.mode === 'stage') {
+          if (this.stageNum === 'all') {
+            this.currentA = Math.floor(Math.random() * 8) + 2; // 2 ~ 9
+          } else {
+            this.currentA = parseInt(this.stageNum);
+          }
+          this.currentB = Math.floor(Math.random() * 9) + 1; // 1 ~ 9
+          document.getElementById('questionSubtext').innerHTML = `<span>문제 ${this.currentQuestionIndex} / ${this.totalQuestions}</span>`;
+        } else {
+          this.currentA = Math.floor(Math.random() * 8) + 2;
+          this.currentB = Math.floor(Math.random() * 9) + 1;
+          document.getElementById('questionSubtext').innerHTML = `<span>도전: ${this.currentQuestionIndex}번째 / ${this.totalQuestions}문항</span>`;
+        }
+
+        this.currentAnswer = this.currentA * this.currentB;
+        document.getElementById('numA').textContent = this.currentA;
+        document.getElementById('numB').textContent = this.currentB;
+
+        // 4지선다 옵션 생성
+        this.generateChoices();
+
+        // 매 문제 카운트다운 타이머 시작
+        this.startQuestionTimer();
+      },
+
+      /* 4지선다 오답 보기 알고리즘 */
+      generateChoices() {
+        const correct = this.currentAnswer;
+        const options = new Set([correct]);
+
+        while (options.size < 4) {
+          let delta = (Math.floor(Math.random() * 5) - 2) * this.currentA;
+          if (delta === 0) delta = (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 4) + 1);
+          let fake = correct + delta;
+          if (fake <= 0 || fake > 81 || fake === correct) {
+            fake = (Math.floor(Math.random() * 8) + 2) * (Math.floor(Math.random() * 9) + 1);
+          }
+          options.add(fake);
+        }
+
+        this.choiceOptions = Array.from(options).sort(() => Math.random() - 0.5);
+
+        const buttons = document.querySelectorAll('.choice-btn');
+        buttons.forEach((btn, idx) => {
+          btn.textContent = this.choiceOptions[idx];
+          btn.disabled = false;
+          btn.className = 'choice-btn btn-3d bg-white hover:bg-amber-50 text-slate-800 font-game text-2xl py-4 rounded-2xl border-2 border-amber-200';
+        });
+      },
+
+      setInputMode(mode) {
+        this.inputMode = mode;
+        const choiceContainer = document.getElementById('choiceContainer');
+        const keypadContainer = document.getElementById('keypadContainer');
+        const btnChoice = document.getElementById('inputModeChoiceBtn');
+        const btnKeypad = document.getElementById('inputModeKeypadBtn');
+
+        if (mode === 'choice') {
+          choiceContainer.classList.remove('hidden');
+          choiceContainer.classList.add('grid');
+          keypadContainer.classList.add('hidden');
+          keypadContainer.classList.remove('grid');
+
+          btnChoice.className = 'px-2.5 py-1 rounded-lg bg-white shadow-xs text-slate-800 transition';
+          btnKeypad.className = 'px-2.5 py-1 rounded-lg text-slate-500 transition';
+        } else {
+          choiceContainer.classList.add('hidden');
+          choiceContainer.classList.remove('grid');
+          keypadContainer.classList.remove('hidden');
+          keypadContainer.classList.add('grid');
+
+          btnChoice.className = 'px-2.5 py-1 rounded-lg text-slate-500 transition';
+          btnKeypad.className = 'px-2.5 py-1 rounded-lg bg-white shadow-xs text-slate-800 transition';
+        }
+      },
+
+      pressKey(val) {
+        if (this.isInputLocked) return;
+        SoundEngine.playTap();
+        if (val === 'clear') {
+          this.currentInputString = '';
+        } else if (val === 'enter') {
+          if (this.currentInputString.length > 0) {
+            this.checkAnswer(parseInt(this.currentInputString, 10));
+          }
+          return;
+        } else {
+          if (this.currentInputString.length < 2) {
+            this.currentInputString += val.toString();
+          }
+        }
+        this.updateAnswerDisplay();
+
+        const currentVal = parseInt(this.currentInputString, 10);
+        if (this.currentInputString.length === 2 && currentVal === this.currentAnswer) {
+          setTimeout(() => this.checkAnswer(currentVal), 100);
+        }
+      },
+
+      submitChoice(idx) {
+        if (this.isInputLocked) return;
+        const selected = this.choiceOptions[idx];
+        this.checkAnswer(selected, idx);
+      },
+
+      updateAnswerDisplay() {
+        const display = document.getElementById('userAnswerDisplay');
+        display.textContent = this.currentInputString.length > 0 ? this.currentInputString : '?';
+      },
+
+      /* 정답 판별 및 오답 시 정답 노출 */
+      checkAnswer(userAns, choiceIndex = null, isTimeout = false) {
+        if (this.isInputLocked) return;
+        this.isInputLocked = true; // 채점 중 추가 조작 차단
+
+        // 타이머 멈춤
+        if (this.questionTimerInterval) {
+          clearInterval(this.questionTimerInterval);
+        }
+
+        const isCorrect = !isTimeout && userAns === this.currentAnswer;
+        const card = document.getElementById('questionCard');
+        card.classList.remove('timer-danger');
+
+        if (isCorrect) {
+          // [정답]
+          this.correctCount++;
+          this.combo++;
+          if (this.combo > this.maxCombo) {
+            this.maxCombo = this.combo;
+          }
+
+          // 속도 보너스 (남은 시간 비례 추가 점수)
+          const speedBonus = Math.round(this.perQuestionTimeLeft * 15);
+          const comboBonus = Math.min(this.combo * 20, 200);
+          this.score += 100 + speedBonus + comboBonus;
+
+          SoundEngine.playCorrect(this.combo);
+          this.showFeedback('🎉 정답!', 'text-emerald-500');
+
+          if (choiceIndex !== null) {
+            const buttons = document.querySelectorAll('.choice-btn');
+            if (buttons[choiceIndex]) {
+              buttons[choiceIndex].classList.add('!bg-emerald-500', '!text-white', '!border-emerald-600');
+            }
+          }
+
+          if (this.combo % 5 === 0) {
+            Confetti.fire(window.innerWidth / 2, window.innerHeight * 0.4, 30);
+          }
+
+          this.updateScoreUI();
+          this.updateComboUI();
+
+          // 0.45초 후 쾌속 다음 문제 진행
+          setTimeout(() => {
+            if (this.currentQuestionIndex >= this.totalQuestions) {
+              this.finishGame();
+            } else {
+              this.nextQuestion();
+            }
+          }, 450);
+
+        } else {
+          // [오답 또는 시간 초과]: 정답 친절히 알려주기
+          this.wrongCount++;
+          this.combo = 0;
+          SoundEngine.playWrong();
+          this.animateWrong();
+
+          const feedbackMsg = isTimeout ? '⏰ 시간 초과!' : '❌ 아쉬워요!';
+          this.showFeedback(feedbackMsg, 'text-rose-500');
+
+          // 1. 배너를 통해 정답 공개
+          const banner = document.getElementById('answerRevealBanner');
+          const revealedNumber = document.getElementById('revealedCorrectNumber');
+          revealedNumber.textContent = this.currentAnswer;
+          banner.classList.remove('hidden');
+
+          // 2. 4지선다 버튼 중 실제 정답 버튼 초록색 표시 & 잘못 고른 버튼 붉은색 표시
+          const buttons = document.querySelectorAll('.choice-btn');
+          buttons.forEach((btn, idx) => {
+            if (this.choiceOptions[idx] === this.currentAnswer) {
+              btn.classList.add('!bg-emerald-500', '!text-white', '!border-emerald-600');
+            } else if (idx === choiceIndex) {
+              btn.classList.add('!bg-rose-500', '!text-white', '!border-rose-700');
+            }
+          });
+
+          // 목숨(기회) 차감 (스테이지, 서바이벌)
+          if (this.mode === 'stage' || this.mode === 'survival') {
+            this.lives--;
+            this.updateLivesUI();
+          }
+
+          this.updateScoreUI();
+          this.updateComboUI();
+
+          // 정답을 충분히 보고 배울 수 있도록 1.4초 후 다음 문제 또는 종료
+          setTimeout(() => {
+            if (this.lives <= 0) {
+              this.finishGame(true); // 하트 소진으로 인한 게임 오버
+            } else if (this.currentQuestionIndex >= this.totalQuestions) {
+              this.finishGame();
+            } else {
+              this.nextQuestion();
+            }
+          }, 1400);
+        }
+      },
+
+      animateWrong() {
+        const card = document.getElementById('questionCard');
+        card.classList.add('animate-shake', 'border-rose-400');
+        setTimeout(() => {
+          card.classList.remove('animate-shake', 'border-rose-400');
+        }, 400);
+      },
+
+      showFeedback(text, colorClass) {
+        const badge = document.getElementById('feedbackBadge');
+        badge.textContent = text;
+        badge.className = `absolute top-2 right-3 text-lg font-game opacity-100 transform translate-y-0 transition duration-150 ${colorClass}`;
+        setTimeout(() => {
+          badge.classList.remove('opacity-100');
+          badge.classList.add('opacity-0', 'translate-y-1');
+        }, 800);
+      },
+
+      updateScoreUI() {
+        document.getElementById('scoreText').textContent = this.score.toLocaleString();
+      },
+
+      updateComboUI() {
+        const indicator = document.getElementById('comboIndicator');
+        const countSpan = document.getElementById('comboCount');
+        const feverBar = document.getElementById('feverProgress');
+
+        countSpan.textContent = this.combo;
+
+        if (this.combo >= 2) {
+          indicator.classList.remove('opacity-0', 'scale-90');
+          indicator.classList.add('opacity-100', 'scale-100');
+          feverBar.style.width = `${Math.min(this.combo * 10, 100)}%`;
+        } else {
+          indicator.classList.add('opacity-0', 'scale-90');
+          indicator.classList.remove('opacity-100', 'scale-100');
+          feverBar.style.width = '0%';
+        }
+      },
+
+      finishGame(isGameOverByLives = false) {
+        this.stopAllTimers();
+        this.isInputLocked = true;
+
+        if (isGameOverByLives) {
+          SoundEngine.playWrong();
+        } else {
+          SoundEngine.playFanfare();
+          Confetti.fire(window.innerWidth / 2, window.innerHeight * 0.45, 60);
+        }
+
+        const total = this.correctCount + this.wrongCount;
+        const accuracy = total > 0 ? Math.round((this.correctCount / total) * 100) : 0;
+
+        document.getElementById('modalScore').textContent = `${this.score.toLocaleString()}점`;
+        document.getElementById('modalCorrect').textContent = `${this.correctCount} / ${total} 개`;
+        document.getElementById('modalMaxCombo').textContent = `${this.maxCombo} COMBO`;
+        document.getElementById('modalAccuracy').textContent = `${accuracy}%`;
+
+        // 최고 기록 갱신
+        if (this.maxCombo > (this.userData.bestCombo || 0)) {
+          this.userData.bestCombo = this.maxCombo;
+        }
+        if (this.mode === 'timeAttack' && this.score > (this.userData.bestScoreTimeAttack || 0)) {
+          this.userData.bestScoreTimeAttack = this.score;
+        }
+
+        const starsRow = document.getElementById('starsRow');
+        const title = document.getElementById('resultTitle');
+        const subtitle = document.getElementById('resultSubtitle');
+        const trophy = document.getElementById('resultTrophy');
+
+        if (isGameOverByLives) {
+          starsRow.classList.add('hidden');
+          title.textContent = '아쉽게 하트가 모두 소진되었어요!';
+          subtitle.textContent = '오답 노트를 기억하고 다시 한번 도전해 보세요!';
+          trophy.textContent = '💔';
+        } else if (this.mode === 'stage') {
+          starsRow.classList.remove('hidden');
+          let starEarned = 1;
+          if (this.correctCount >= 10) starEarned = 3;
+          else if (this.correctCount >= 8) starEarned = 2;
+
+          document.getElementById('star1').textContent = starEarned >= 1 ? '⭐' : '☆';
+          document.getElementById('star2').textContent = starEarned >= 2 ? '⭐' : '☆';
+          document.getElementById('star3').textContent = starEarned >= 3 ? '⭐' : '☆';
+
+          if (this.stageNum !== 'all') {
+            const prev = (this.userData.stageStars && this.userData.stageStars[this.stageNum]) || 0;
+            if (starEarned > prev) {
+              if (!this.userData.stageStars) this.userData.stageStars = {};
+              this.userData.stageStars[this.stageNum] = starEarned;
+            }
+          }
+
+          title.textContent = starEarned === 3 ? '퍼펙트 마스터 클리어! 👑' : '스테이지 완주!';
+          subtitle.textContent = '제한 시간 안에 10문제를 훌륭하게 완주했습니다!';
+          trophy.textContent = starEarned === 3 ? '👑' : '⭐';
+        } else {
+          starsRow.classList.add('hidden');
+          title.textContent = this.mode === 'timeAttack' ? '타임어택 완료!' : '서바이벌 대기록 달성!';
+          subtitle.textContent = '눈부신 집중력으로 최고 기록을 돌파했습니다!';
+          trophy.textContent = this.score > 2000 ? '🏆' : '👏';
+        }
+
+        this.saveStorage();
+        this.openResultModal();
+      },
+
+      openResultModal() {
+        const modal = document.getElementById('resultModal');
+        const card = document.getElementById('modalCard');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          card.classList.remove('scale-95');
+          card.classList.add('scale-100');
+        }, 50);
+      },
+
+      closeResultModal() {
+        const modal = document.getElementById('resultModal');
+        const card = document.getElementById('modalCard');
+        card.classList.remove('scale-100');
+        card.classList.add('scale-95');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 150);
+      },
+
+      openChart() {
+        SoundEngine.playTap();
+        this.selectChartDan(2);
+        this.showScreen('chartScreen');
+      },
+
+      renderChartTabs() {
+        const tabs = document.getElementById('chartTabs');
+        tabs.innerHTML = '';
+        for (let dan = 2; dan <= 9; dan++) {
+          const btn = document.createElement('button');
+          btn.id = `chartTabBtn_${dan}`;
+          btn.className = `px-3.5 py-1.5 rounded-xl font-game text-sm shrink-0 border transition ${dan === 2 ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-600 border-slate-200'}`;
+          btn.textContent = `${dan}단`;
+          btn.onclick = () => this.selectChartDan(dan);
+          tabs.appendChild(btn);
+        }
+      },
+
+      selectChartDan(dan) {
+        SoundEngine.playTap();
+        for (let d = 2; d <= 9; d++) {
+          const btn = document.getElementById(`chartTabBtn_${d}`);
+          if (btn) {
+            btn.className = `px-3.5 py-1.5 rounded-xl font-game text-sm shrink-0 border transition ${d === dan ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-600 border-slate-200'}`;
+          }
+        }
+
+        const content = document.getElementById('chartContent');
+        content.innerHTML = '';
+
+        for (let i = 1; i <= 9; i++) {
+          const ans = dan * i;
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between p-2.5 bg-indigo-50/60 rounded-xl hover:bg-indigo-100 transition cursor-pointer';
+          row.onclick = () => SoundEngine.beep(400 + i * 40, 0.1, 'sine', 0.15);
+          row.innerHTML = `
+            <div class="flex items-center gap-2 font-game text-lg text-slate-700">
+              <span class="text-indigo-600">${dan}</span>
+              <span class="text-slate-400 text-sm">×</span>
+              <span>${i}</span>
+            </div>
+            <div class="font-game text-xl text-indigo-700 font-bold">= ${ans}</div>
+          `;
+          content.appendChild(row);
+        }
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      Game.init();
+    });
+  </script>
+</body>
+</html>
